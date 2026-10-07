@@ -15,3 +15,10 @@ ai-service/**/*.pyc
 
 # OS
 .DS_Store
+# Build artifacts
+backend/examshield-server
+frontend/dist/
+node_modules/
+*.log
+.env
+.env.local

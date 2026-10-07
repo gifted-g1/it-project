@@ -12,7 +12,7 @@ import (
 
 	"examshield/internal"
 	"examshield/internal/config"
-	"examshield/internal/database"
+	"examshield/internal/db"
 )
 
 func main() {
@@ -22,17 +22,17 @@ func main() {
 		Level: parseLevel(cfg.LogLevel),
 	}))
 
-	db, err := database.Connect(cfg.DatabaseURL)
+	gdb, err := db.Connect(cfg.DatabaseURL)
 	if err != nil {
 		logger.Error("failed to connect to database", "error", err)
 		os.Exit(1)
 	}
-	if err := database.Migrate(db); err != nil {
+	if err := db.AutoMigrate(gdb); err != nil {
 		logger.Error("failed to run migrations", "error", err)
 		os.Exit(1)
 	}
 
-	router := internal.NewRouter(cfg, db, logger)
+	router := internal.NewRouter(cfg, gdb, logger)
 
 	// Bind to 0.0.0.0 so LAN students can connect via the host's IP.
 	addr := "0.0.0.0:" + cfg.HTTPPort

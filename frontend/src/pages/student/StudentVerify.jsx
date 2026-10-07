@@ -29,7 +29,18 @@ export default function StudentVerify() {
         setMessage('Camera access was denied. Face verification requires camera permission.')
       })
 
-    return () => stream?.getTracks().forEach((t) => t.stop())
+    // Auto-capture once the camera becomes ready so students who
+    // enter the exam URL via the LAN IP are immediately prompted to
+    // verify their identity without extra clicks.
+    const autoCapture = () => {
+      if (status === 'camera_ready') captureAndVerify()
+    }
+    const readyInterval = setInterval(autoCapture, 700)
+
+    return () => {
+      stream?.getTracks().forEach((t) => t.stop())
+      clearInterval(readyInterval)
+    }
   }, [])
 
   const captureAndVerify = async () => {

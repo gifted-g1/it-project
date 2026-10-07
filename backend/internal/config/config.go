@@ -22,9 +22,14 @@ type Config struct {
 }
 
 func Load() *Config {
+	jwtSecret := getEnv("JWT_SECRET", "")
+	if jwtSecret == "" {
+		panic("JWT_SECRET environment variable is required and must not be empty — set a strong random value")
+	}
+
 	return &Config{
 		Env:      getEnv("APP_ENV", "development"),
-		HTTPPort: getEnv("HTTP_PORT", "8080"),
+		HTTPPort: getEnv("HTTP_PORT", "8081"),
 
 		// Local development MySQL:
 		// Username: root | Password: empty | Host: 127.0.0.1 | Port: 3306 | DB: examshield
@@ -33,7 +38,7 @@ func Load() *Config {
 			"root:@tcp(127.0.0.1:3306)/examshield?charset=utf8mb4&parseTime=True&loc=Local",
 		),
 
-		JWTSecret:     getEnv("JWT_SECRET", "change-me-in-production"),
+		JWTSecret:     jwtSecret,
 		JWTAccessTTL:  getDurationMinutes("JWT_ACCESS_TTL_MINUTES", 15),
 		JWTRefreshTTL: getDurationMinutes("JWT_REFRESH_TTL_MINUTES", 60*24*7),
 
