@@ -9,8 +9,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"examshield/internal/examimport"
 	appexam "examshield/internal/exam"
+	"examshield/internal/examimport"
 	"examshield/internal/models"
 	"examshield/internal/repositories"
 	"examshield/internal/websocket"
@@ -91,9 +91,28 @@ func (s *ExamService) ImportQuestionsFromPDF(ctx context.Context, examID uuid.UU
 		return nil, fmt.Errorf("reading PDF: %w", err)
 	}
 
+	// Diagnostic: log excerpt and length of extracted text to help
+	// understand why some PDFs parse into a single line.
+	excerpt := text
+	if len(excerpt) > 800 {
+		excerpt = excerpt[:800]
+	}
+	s.logger.Info("pdf extracted", "chars", len(text))
+	s.logger.Debug("pdf excerpt", "excerpt", excerpt)
+
 	parsed := examimport.ParseQuestions(text)
 	if len(parsed) == 0 {
 		return nil, ErrNoQuestionsFound
+	}
+
+	s.logger.Info("pdf parsed", "questions_found", len(parsed))
+	for i, pq := range parsed {
+		// Log each parsed question's type and a short preview for diagnostics
+		preview := pq.Text
+		if len(preview) > 120 {
+			preview = preview[:120]
+		}
+		s.logger.Debug("parsed question", "index", i, "type", pq.Type, "opts", len(pq.Options), "text_preview", preview)
 	}
 
 	existing, err := s.exams.ListQuestions(ctx, examID)
@@ -318,6 +337,7 @@ func gradeAnswer(q models.Question, ans *models.Answer) bool {
 		return false
 	}
 }
+
 // FindActiveExamForStudent returns the first ACTIVE exam in the
 // student's organization, or ErrExamNotFound if none is running.
 func (s *ExamService) FindActiveExamForStudent(ctx context.Context, orgID uuid.UUID) (*models.Exam, error) {
@@ -331,4 +351,14 @@ func (s *ExamService) FindActiveExamForStudent(ctx context.Context, orgID uuid.U
 		}
 	}
 	return nil, ErrExamNotFound
+}
+
+// FindAttempt retrieves an exam attempt by ID for authorization checks
+// and ownership validation.
+func (s *ExamService) FindAttempt(ctx context.Context, attemptID uuid.UUID) (*models.ExamAttempt, error) {
+	attempt, err := s.exams.FindAttempt(ctx, attemptID)
+	if errors.Is(err, repositories.ErrNotFound) {
+		return nil, ErrExamNotFound
+	}
+	return attempt, err
 }

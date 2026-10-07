@@ -65,7 +65,7 @@ services:
       APP_ENV: production
       HTTP_PORT: 8080
       DATABASE_URL: "examshield:examshield@tcp(mysql:3306)/examshield?charset=utf8mb4&parseTime=True&loc=Local"
-      JWT_SECRET: "change-me-in-production"
+      JWT_SECRET: "${JWT_SECRET:-change-me-in-production-with-random-string}"
       JWT_ACCESS_TTL_MINUTES: "15"
       JWT_REFRESH_TTL_MINUTES: "10080"
       AI_SERVICE_URL: "http://ai-service:9000"

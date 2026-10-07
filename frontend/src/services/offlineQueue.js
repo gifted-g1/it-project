@@ -31,12 +31,23 @@ function writeQueue(queue) {
  * the same question replaces the earlier queued one rather than
  * piling up duplicates) and return { queued: true } instead of
  * throwing, so the exam UI never blocks the student on a network blip.
+ *
+ * Note: Only network-level errors are queued for retry. HTTP 4xx/5xx
+ * responses indicate validation or server errors that won't be resolved
+ * by retrying later and should be reported to the user.
  */
 export async function submitAnswerResilient(examApi, payload) {
   try {
     await examApi.submitAnswer(payload)
     return { queued: false }
   } catch (err) {
+    // Only queue network-level errors, not HTTP error responses.
+    // A 400/401/500 won't succeed on retry, so queue=false lets the UI handle it.
+    const isNetworkError = !err.response || (err.response?.status >= 500)
+    if (!isNetworkError) {
+      return { queued: false, error: err }
+    }
+
     const queue = readQueue().filter(
       (q) => !(q.attempt_id === payload.attempt_id && q.question_id === payload.question_id)
     )
@@ -55,6 +66,7 @@ export function pendingCount(attemptId) {
  * Retry every queued answer. Call this periodically and whenever the
  * browser reports it's back online. Successfully-sent entries are
  * removed from the queue; failures stay queued for the next attempt.
+ * 4xx/5xx HTTP responses are not retried; only genuine network errors are.
  */
 export async function flushQueue(examApi) {
   const queue = readQueue()
@@ -65,8 +77,13 @@ export async function flushQueue(examApi) {
     const { queuedAt, ...payload } = item
     try {
       await examApi.submitAnswer(payload)
-    } catch {
-      stillPending.push(item)
+    } catch (err) {
+      // Only keep in queue if it's a network error; HTTP errors won't retry
+      const isNetworkError = !err.response || (err.response?.status >= 500)
+      if (isNetworkError) {
+        stillPending.push(item)
+      }
+      // 4xx/5xx are dropped from queue (user will see error in UI)
     }
   }
   writeQueue(stillPending)

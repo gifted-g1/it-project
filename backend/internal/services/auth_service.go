@@ -10,6 +10,7 @@ import (
 	"examshield/internal/auth"
 	"examshield/internal/models"
 	"examshield/internal/repositories"
+	"strings"
 )
 
 var (
@@ -35,12 +36,28 @@ type LoginResult struct {
 }
 
 func (s *AuthService) Login(ctx context.Context, email, password, ip string) (*LoginResult, error) {
+	// Support either email login or matric number + surname as password.
 	user, err := s.users.FindByEmail(ctx, email)
 	if err != nil {
-		return nil, ErrInvalidCredentials
-	}
-	if !auth.VerifyPassword(user.PasswordHash, password) {
-		return nil, ErrInvalidCredentials
+		// Try matric number lookup for student login. The UI sends the
+		// matric number in the email field and the student's surname as
+		// the password in this deployment.
+		user, err = s.users.FindByMatricNumber(ctx, email)
+		if err != nil {
+			return nil, ErrInvalidCredentials
+		}
+		// If a matric-number login was used, accept surname (case-
+		// insensitive) as the password match. This is intentionally
+		// permissive for the current staging/testing flow — consider
+		// replacing with a proper one-time password or enrollment
+		// flow for production.
+		if !strings.EqualFold(user.FullName[strings.LastIndex(user.FullName, " ")+1:], password) {
+			return nil, ErrInvalidCredentials
+		}
+	} else {
+		if !auth.VerifyPassword(user.PasswordHash, password) {
+			return nil, ErrInvalidCredentials
+		}
 	}
 	if user.Suspended {
 		return nil, ErrAccountSuspended

@@ -16,8 +16,8 @@ import (
 	"examshield/internal/models"
 	"examshield/internal/repositories"
 	"examshield/internal/services"
-	"examshield/internal/webui"
 	"examshield/internal/websocket"
+	"examshield/internal/webui"
 
 	"gorm.io/gorm"
 )
@@ -99,6 +99,8 @@ func NewRouter(cfg *config.Config, gdb *gorm.DB, logger *slog.Logger) http.Handl
 
 	// Student-facing exam-taking routes.
 	studentOnly := appmw.RequireRole(models.RoleStudent)
+	// Returns the currently ACTIVE exam for a student (or {"exam": null}).
+	authed.Handle("/exams/my-active", studentOnly(http.HandlerFunc(examHandler.GetMyActiveExam))).Methods(http.MethodGet)
 	authed.Handle("/exams/{id}/start-attempt", studentOnly(http.HandlerFunc(examHandler.StartAttempt))).Methods(http.MethodPost)
 	authed.Handle("/exams/attempts/{attemptId}/submit", studentOnly(http.HandlerFunc(examHandler.SubmitExam))).Methods(http.MethodPost)
 	authed.HandleFunc("/answers", examHandler.SubmitAnswer).Methods(http.MethodPost)

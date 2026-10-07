@@ -33,6 +33,17 @@ func (r *UserRepository) FindByEmail(ctx context.Context, email string) (*models
 	return &u, err
 }
 
+// FindByMatricNumber looks up a student by matric number and returns
+// the associated `User` record. Returns ErrNotFound if no match.
+func (r *UserRepository) FindByMatricNumber(ctx context.Context, matric string) (*models.User, error) {
+	var s models.Student
+	err := r.db.WithContext(ctx).Preload("User").Where("matric_number = ?", matric).First(&s).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, ErrNotFound
+	}
+	return &s.User, err
+}
+
 func (r *UserRepository) FindByID(ctx context.Context, id uuid.UUID) (*models.User, error) {
 	var u models.User
 	err := r.db.WithContext(ctx).First(&u, "id = ?", id).Error

@@ -104,6 +104,10 @@ func (h *MonitoringHandler) ListEvents(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+
+	// Route is protected by RBAC middleware (RequireRole(ADMIN, LECTURER))
+	// which ensures only authorized users can list exam events.
+
 	events, err := h.monitoring.ListEventsForExam(r.Context(), examID)
 	if err != nil {
 		appmw.WriteError(w, http.StatusInternalServerError, "unable to list events")

@@ -15,3 +15,29 @@ ai-service/**/*.pyc
 
 # OS
 .DS_Store
+# Build artifacts
+backend/examshield-server
+frontend/dist/
+node_modules/
+*.log
+.env
+.env.local
+
+# Compiled binaries
+*.exe
+examshield-server
+ai-service/server
+backend/server
+
+# Test artifacts & scratch files
+tools/pdf_sample/*.exe
+tools/pdf_sample/login.json
+tools/pdf_sample/sample_questions.pdf
+
+# Build output (keep the webui/dist — required for go:embed)
+frontend/dist/
+node_modules/
+.env
+.env.local
+*.log
+server-stats.sh

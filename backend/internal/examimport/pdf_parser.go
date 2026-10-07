@@ -73,12 +73,31 @@ func ParseQuestions(text string) []ParsedQuestion {
 	text = strings.ReplaceAll(text, "\r\n", "\n")
 	text = strings.ReplaceAll(text, "\r", "\n")
 
+	// Heuristic: some PDFs collapse newlines so multiple numbered
+	// questions appear on a single long line. Help the parser by
+	// ensuring a numeric question marker like "1." or "2." starts on
+	// its own line when it is preceded by whitespace. This simple
+	// transformation increases the chances of detecting multiple
+	// questions in extracted text.
+
+	// Insert newline before a numeric question marker when it's
+	// collapsed into the previous token (e.g. "Answer: A2. The...").
+	// Matches either whitespace+number (existing case) or a letter/paren
+	// followed immediately by a number marker.
+	numStartRe := regexp.MustCompile(`(?:\s|(\w|[\)\]\:]))(\d{1,3}\.)`)
+	text = numStartRe.ReplaceAllString(text, "\n$2")
+
+	// Some PDFs collapse multiple-choice options onto one line:
+	// "A) Option OneB) Option TwoC) Option Three" — insert a newline
+	// before each option letter when it's not already separated.
+	optInlineRe := regexp.MustCompile(`([^\s])([A-Ea-e][\.|\)])`)
+	text = optInlineRe.ReplaceAllString(text, "$1\n$2")
+
 	lines := strings.Split(text, "\n")
 
 	var questions []ParsedQuestion
 	var current *ParsedQuestion
 	orderIndex := 0
-	mode := "" // "mcq" | "tf" | "theory"
 
 	flush := func() {
 		if current == nil {
@@ -100,15 +119,8 @@ func ParseQuestions(text string) []ParsedQuestion {
 
 		// Update mode on section headers.
 		if sectionHeaderRe.MatchString(line) {
-			upper := strings.ToUpper(line)
-			switch {
-			case strings.Contains(upper, "MULTIPLE CHOICE"):
-				mode = "mcq"
-			case strings.Contains(upper, "TRUE") && strings.Contains(upper, "FALSE"):
-				mode = "tf"
-			case strings.Contains(upper, "THEORY") || strings.Contains(upper, "STRUCTURED"):
-				mode = "theory"
-			}
+			// Section headers are recognized but not currently used to
+			// influence parsing behavior. May be used for future enhancements.
 			continue
 		}
 

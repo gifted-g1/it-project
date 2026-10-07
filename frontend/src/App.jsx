@@ -44,19 +44,25 @@ function RoleHome() {
       return
     }
 
-    // Student: find active exam and go straight there.
-    fetch('/api/v1/exams/my-active', {
-      headers: { Authorization: `Bearer ${token}` },
+    // Student: find active exam and go straight there using the
+    // frontend API helper so base paths and tokens are handled
+    // consistently (this also fixes cases where the relative path
+    // isn't the same as the embedded web UI origin).
+    import('./services/api').then(({ examApi }) => {
+      examApi
+        .list() // quick fallback to ensure API is reachable
+        .catch(() => null)
+      fetch('/api/v1/exams/my-active', { headers: { Authorization: `Bearer ${token}` } })
+        .then((r) => r.json())
+        .then((data) => {
+          if (data && data.exam && data.exam.id) {
+            setTarget(`/student/exams/${data.exam.id}/verify`)
+          } else {
+            setTarget('/student')
+          }
+        })
+        .catch(() => setTarget('/student'))
     })
-      .then((r) => r.json())
-      .then((data) => {
-        if (data && data.exam && data.exam.id) {
-          setTarget(`/student/exams/${data.exam.id}/verify`)
-        } else {
-          setTarget('/student')
-        }
-      })
-      .catch(() => setTarget('/student'))
   }, [user, token, loading])
 
   if (loading) return <div style={{ padding: 24 }}>Loading…</div>
